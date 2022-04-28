@@ -1,41 +1,46 @@
-<h1 id="execute">Execute Proposal</h1>
+<h1 id="vote">Vote</h1>
 <div id="display"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.6.4/ethers.umd.min.js" integrity="sha512-EKCEAWajhazrbxxXV+UKphn1Vl1MhIbZxCy5kPVzVrTRKYJ96r7QtPgnK+Zvoi2Er1S3jU/y+ZgCGMA+A7Hdug==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="./scripts/getProvider.js"></script>
 <script src="./scripts/config.js"></script>
 <script src="./scripts/fetchSubgraph.js"></script>
+
 <script>
   window.addEventListener("load", async (event) => {
     // fetch from ./scripts/fetchSubgraph.js
     const subgraph = await fetchSubgraph();
     // get state of each proposal
     const provider = await getProvider();
-    const Contract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
+    // get current block number
+    const blockNumber = await provider.getBlockNumber();
     // filter out proposals that are active and can be executed
+    const Contract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
     const executableProposals = [];
     for (let i = 0; i < subgraph.length; i++) {
       const proposalState = await Contract["state"](subgraph[i].proposalId);
-      console.log(subgraph[i].description, subgraph[i].proposalId, proposalState)
-      // state 4 means that the proposal is active and can be executed
-      if (proposalState == 4) {
+      // filter state active (1) && call data is to set proposal && block number is less than endTime
+      if (proposalState === 1 && subgraph[i].calls[0].calldata.indexOf("0xd03f291c") === 0 && blockNumber < Number(subgraph[i].endBlock)) {
         executableProposals.push(subgraph[i]);
       }
     }
+    console.log(executableProposals);
     // display proposals
     const display = executableProposals.map((val) => {
+      const amount = val.description.split("-")[1];
       return `<div>
-        <button onClick="execute('${val.calls[0].calldata}', '${val.description}')">${val.description}</button>
+        <button onClick="castVote('${val.proposalId}')">Vote: ${amount}</button>
         </div>`;
     });
     document.getElementById("display").innerHTML = display;
   });
 
-  async function execute(_callData, _description) {
+  async function castVote(_proposalId) {
+    console.log(_proposalId);
     const provider = await getProvider();
-    const Contract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
-    const descriptionHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(_description));
-    const { data } = await Contract.populateTransaction["execute"]([config.fishAddress], [0], [_callData], descriptionHash);
+    // get call data from fish contract
+    const FishContract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
+    const { data } = await FishContract.populateTransaction["castVote"](_proposalId, 1);
     const signer = provider.getSigner();
     const receipt = await signer
       .sendTransaction({
@@ -46,9 +51,9 @@
         console.error(err);
         return err.message;
       });
-    // display tx hash
-    console.log(receipt)
+    // display receipt
+    console.log(receipt);
     const txHash = receipt.hash || "";
-    document.getElementById("execute").innerHTML = "Execute Proposal " + txHash;
+    document.getElementById("vote").innerHTML = "Vote " + txHash;
   }
 </script>

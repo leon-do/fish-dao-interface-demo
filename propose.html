@@ -1,0 +1,37 @@
+<h1 id="propose">Propose</h1>
+<input id="input" value="5" placeholder="claim amount" type="number" />
+<button onClick="propose()">propose</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.6.4/ethers.umd.min.js" integrity="sha512-EKCEAWajhazrbxxXV+UKphn1Vl1MhIbZxCy5kPVzVrTRKYJ96r7QtPgnK+Zvoi2Er1S3jU/y+ZgCGMA+A7Hdug==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="./scripts/getProvider.js"></script>
+<script src="./scripts/config.js"></script>
+
+<script>
+  async function propose() {
+    const claimAmount = document.getElementById("input").value;
+    // get description
+    const description = "claim-" + claimAmount + "-" + Math.floor(Date.now() / 1000);
+    const provider = await getProvider();
+    // get call data from fish contract
+    const FishContract = new ethers.Contract(config.fishAddress, config.fishAbi, provider);
+    const callData = await FishContract.populateTransaction["setProposal"](claimAmount);
+    console.log(callData)
+    // call commons contract to execute the call
+    const CommonsContract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
+    const { data } = await CommonsContract.populateTransaction["propose"]([config.fishAddress], [0], [callData.data], description);
+    const signer = provider.getSigner();
+    const receipt = await signer
+      .sendTransaction({
+        to: config.commonsAddress,
+        data,
+      })
+      .catch((err) => {
+        console.error(err);
+        return err.message;
+      });
+    // display receipt
+    console.log(receipt);
+    const txHash = receipt.hash || "";
+    document.getElementById("propose").innerHTML = "Propose " + txHash;
+  }
+</script>
