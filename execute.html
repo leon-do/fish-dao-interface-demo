@@ -45,8 +45,9 @@
         console.error(err);
         return err.message;
       });
-    // display receipt
-    console.log(receipt);
-    document.getElementById("execute").innerHTML = "Execute Proposal: " + receipt || "";
+    // display tx hash
+    console.log(receipt)
+    const txHash = receipt.hash || "";
+    document.getElementById("execute").innerHTML = "Execute Proposal " + txHash;
   }
 </script>

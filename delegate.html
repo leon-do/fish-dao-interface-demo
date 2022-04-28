@@ -1,4 +1,4 @@
-<h1 id="claim">Claim Fish</h1>
+<h1 id="delegate">Delegate</h1>
 <div id="display"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.6.4/ethers.umd.min.js" integrity="sha512-EKCEAWajhazrbxxXV+UKphn1Vl1MhIbZxCy5kPVzVrTRKYJ96r7QtPgnK+Zvoi2Er1S3jU/y+ZgCGMA+A7Hdug==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -9,14 +9,21 @@
   window.addEventListener("load", async (event) => {
     const provider = await getProvider();
     const Contract = new ethers.Contract(config.fishAddress, config.fishAbi, provider);
-    const amount = await Contract["getProposalAmt"]();
-    document.getElementById("display").innerHTML = `<button onClick="claimFish()">Claim ${amount.toString()}</button>`; 
+    const providerAddresses = await provider.listAccounts();
+    const delegates = await Contract["delegates"](providerAddresses[0]);
+    console.log({ delegates });
+    if (delegates === providerAddresses[0]) {
+      document.getElementById("delegate").innerHTML = "Delegate: You are already a delegate";
+    } else {
+      document.getElementById("display").innerHTML = `<button onClick="delegate()">Delegate</button>`;
+    }
   });
 
-  async function claimFish() {
+  async function delegate() {
     const provider = await getProvider();
     const Contract = new ethers.Contract(config.fishAddress, config.fishAbi, provider);
-    const { data } = await Contract.populateTransaction["claim"]();
+    const providerAddresses = await provider.listAccounts();
+    const { data } = await Contract.populateTransaction["delegate"](providerAddresses[0]);
     const signer = provider.getSigner();
     const receipt = await signer
       .sendTransaction({
@@ -30,6 +37,6 @@
     // display receipt
     console.log(receipt);
     const txHash = receipt.hash || "";
-    document.getElementById("claim").innerHTML = "Claim Fish " + txHash;
+    document.getElementById("delegate").innerHTML = "Delegate: " + txHash;
   }
 </script>
