@@ -1,0 +1,19 @@
+<h1 id="block">Block</h1>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.6.4/ethers.umd.min.js" integrity="sha512-EKCEAWajhazrbxxXV+UKphn1Vl1MhIbZxCy5kPVzVrTRKYJ96r7QtPgnK+Zvoi2Er1S3jU/y+ZgCGMA+A7Hdug==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="./scripts/getProvider.js"></script>
+
+<script>
+  setInterval(async () => {
+    getBlock();
+  }, 1000 * 5);
+
+  getBlock();
+  async function getBlock() {
+    const provider = await getProvider();
+    const blockNumber = await provider.getBlockNumber();
+    console.log(blockNumber);
+    document.getElementById("block").innerHTML = "Block: " + blockNumber.toString();
+    return blockNumber;
+  }
+</script>
