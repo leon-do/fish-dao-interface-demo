@@ -1,5 +1,7 @@
 # fish-dao-interface-demo
 
+https://api.studio.thegraph.com/query/20193/dao-fish-rinkeby/v0.0.6/graphql
+
 ```graphql
 {
   proposals {
