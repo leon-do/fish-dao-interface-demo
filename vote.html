@@ -4,36 +4,45 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.6.4/ethers.umd.min.js" integrity="sha512-EKCEAWajhazrbxxXV+UKphn1Vl1MhIbZxCy5kPVzVrTRKYJ96r7QtPgnK+Zvoi2Er1S3jU/y+ZgCGMA+A7Hdug==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="./scripts/getProvider.js"></script>
 <script src="./scripts/config.js"></script>
-<script src="./scripts/fetchSubgraph.js"></script>
+<script src="./scripts/fetchProposals.js"></script>
 
 <script>
   window.addEventListener("load", async (event) => {
-    // fetch from ./scripts/fetchSubgraph.js
-    const subgraph = await fetchSubgraph();
+    // fetch from ./scripts/fetchProposals.js
+    const proposals = await fetchProposals();
     // get state of each proposal
     const provider = await getProvider();
+    const providerAddresses = await provider.listAccounts();
+    const providerAddress = providerAddresses[0].toLowerCase();
     // get current block number
     const blockNumber = await provider.getBlockNumber();
-    // filter out proposals that are active and can be executed
-    const Contract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
-    const executableProposals = [];
-    for (let i = 0; i < subgraph.length; i++) {
-      const proposalState = await Contract["state"](subgraph[i].proposalId);
-      // filter state active (1) && call data is to set proposal && block number is less than endTime
-      if (proposalState === 1 && subgraph[i].calls[0].calldata.indexOf("0xd03f291c") === 0 && blockNumber < Number(subgraph[i].endBlock)) {
-        executableProposals.push(subgraph[i]);
-      }
-    }
-    console.log(executableProposals);
     // display proposals
-    const display = executableProposals.map((val) => {
-      const amount = val.description.split("-")[1];
-      return `<div>
-        <button onClick="castVote('${val.proposalId}')">Vote: ${amount}</button>
-        </div>`;
-    });
+    let display = "";
+    // disable voting if proposal is expired or user has voted
+    for (let proposal of proposals) {
+      // parse 0xd03f291c0000000000000000000000000000000000000000000000000000000000000001
+      const fishAmount = parseInt(proposal.calls[0].calldata.split("0xd03f291c")[1], 16);
+      const hasVote = hasVoted(proposal, providerAddress);
+      const canVote = blockNumber < proposal.endBlock;
+      const canClick = !hasVote && canVote ? "" : "disabled";
+      display += `
+      <div>
+        <button ${canClick} ${hasVoted(proposal) ? "disabled" : ""} onClick=castVote(${proposal.proposalId})> Claim ${fishAmount} FISH </button>
+      </div>
+      `;
+    }
+    // display proposals
     document.getElementById("display").innerHTML = display;
   });
+
+  function hasVoted(proposal, providerAddress) {
+    for (let receipt of proposal.receipts) {
+      if (receipt.voter.id == providerAddress) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   async function castVote(_proposalId) {
     console.log(_proposalId);

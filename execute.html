@@ -4,34 +4,59 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.6.4/ethers.umd.min.js" integrity="sha512-EKCEAWajhazrbxxXV+UKphn1Vl1MhIbZxCy5kPVzVrTRKYJ96r7QtPgnK+Zvoi2Er1S3jU/y+ZgCGMA+A7Hdug==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="./scripts/getProvider.js"></script>
 <script src="./scripts/config.js"></script>
-<script src="./scripts/fetchSubgraph.js"></script>
+<script src="./scripts/fetchProposals.js"></script>
 <script>
   window.addEventListener("load", async (event) => {
-    // fetch from ./scripts/fetchSubgraph.js
-    const subgraph = await fetchSubgraph();
+    // fetch from ./scripts/fetchProposals.js
+    const proposals = await fetchProposals();
     // get state of each proposal
     const provider = await getProvider();
-    const Contract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
-    // filter out proposals that are active and can be executed
-    const executableProposals = [];
-    for (let i = 0; i < subgraph.length; i++) {
-      const proposalState = await Contract["state"](subgraph[i].proposalId);
-      console.log(subgraph[i].description, subgraph[i].proposalId, proposalState)
-      // state 4 means that the proposal is active and can be executed
-      if (proposalState == 4) {
-        executableProposals.push(subgraph[i]);
-      }
-    }
+    const CommonsContract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
+    const quorumNumerator = await CommonsContract["quorumNumerator"]();
+    // get total supply
+    const FishContract = new ethers.Contract(config.fishAddress, config.fishAbi, provider);
+    const totalSupply = await FishContract["totalSupply"]();
+    const proposalExp = await FishContract["getProposalExp"]();
+    // get current block number
+    const blockNumber = await provider.getBlockNumber();
     // display proposals
-    const display = executableProposals.map((val) => {
-      return `<div>
-        <button onClick="execute('${val.calls[0].calldata}', '${val.description}')">${val.description}</button>
-        </div>`;
-    });
+    let display = "";
+    for (let proposal of proposals) {
+      // parse 0xd03f291c0000000000000000000000000000000000000000000000000000000000000001
+      const fishAmount = parseInt(proposal.calls[0].calldata.split("0xd03f291c")[1], 16);
+      const canClick = blockNumber > proposalExp && canExecute(proposal, totalSupply, quorumNumerator) ? "" : "disabled";
+      display += `
+        <div>
+          <button ${canClick} onClick="execute('${proposal.calls[0].calldata}', '${proposal.description}')"> Execute ${fishAmount} FISH </button>
+        </div>
+      `;
+    }
     document.getElementById("display").innerHTML = display;
   });
 
+  function canExecute(proposal, totalSupply, quorumNumerator) {
+    if (proposal.receipts.length == 0) return false;
+    if (proposal.executed) return false;
+    let totalAgainstWeight = 0;
+    let totalForWeight = 0;
+    let totalAbstainWeight = 0;
+    // add up all votes
+    for (let i = 0; i < proposal.receipts.length; i++) {
+      if (proposal.supports[i].support == 0) {
+        totalAgainstWeight += Number(proposal.receipts[i].weight);
+      } else if (proposal.supports[i].support == 1) {
+        totalForWeight += Number(proposal.receipts[i].weight);
+      } else if (proposal.supports[i].support == 2) {
+        totalAbstainWeight += Number(proposal.receipts[i].weight);
+      }
+    }
+    const enoughForVotes = totalForWeight > totalAbstainWeight;
+    const enoughTotalVotes = (100 * (totalForWeight + totalAgainstWeight + totalAbstainWeight)) / totalSupply > quorumNumerator;
+    return enoughForVotes && enoughTotalVotes;
+  }
+
   async function execute(_callData, _description) {
+    console.log({ _callData, _description });
     const provider = await getProvider();
     const Contract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
     const descriptionHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(_description));
@@ -41,13 +66,14 @@
       .sendTransaction({
         to: config.commonsAddress,
         data,
+        // maxFeePerGas: maxFeePerGas.baseFeePerGas,
       })
       .catch((err) => {
         console.error(err);
         return err.message;
       });
     // display tx hash
-    console.log(receipt)
+    console.log(receipt);
     const txHash = receipt.hash || "";
     document.getElementById("execute").innerHTML = "Execute Proposal " + txHash;
   }

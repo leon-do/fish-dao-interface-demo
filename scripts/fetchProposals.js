@@ -1,7 +1,6 @@
-async function fetchSubgraph() {
+async function fetchProposals() {
   const query = `{
-    proposals {
-      id
+    proposals (orderBy: "endBlock", orderDirection: "desc"){
       startBlock
       proposalId
       executed
@@ -9,6 +8,16 @@ async function fetchSubgraph() {
       description
       calls {
         calldata
+      }
+      receipts {
+        weight
+        voter {
+          id
+        }
+      }
+      canceled
+      supports {
+        support
       }
     }
   }`;
