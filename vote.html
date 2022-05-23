@@ -8,28 +8,31 @@
 
 <script>
   window.addEventListener("load", async (event) => {
-    // fetch from ./scripts/fetchProposals.js
-    const proposals = await fetchProposals();
-    // get state of each proposal
+    // get provider from ./scripts/getProvider.js
     const provider = await getProvider();
+    // get provider info
     const providerAddresses = await provider.listAccounts();
     const providerAddress = providerAddresses[0].toLowerCase();
     // get current block number
     const blockNumber = await provider.getBlockNumber();
+    // fetch from ./scripts/fetchProposals.js
+    const proposals = await fetchProposals(blockNumber);
+
     // display proposals
     let display = "";
     // disable voting if proposal is expired or user has voted
     for (let proposal of proposals) {
       // parse 0xd03f291c0000000000000000000000000000000000000000000000000000000000000001
       const fishAmount = parseInt(proposal.calls[0].calldata.split("0xd03f291c")[1], 16);
+      // check if user has voted
       const hasVote = hasVoted(proposal, providerAddress);
-      const canVote = blockNumber < proposal.endBlock;
-      const canClick = !hasVote && canVote ? "" : "disabled";
-      display += `
-      <div>
-        <button ${canClick} ${hasVoted(proposal) ? "disabled" : ""} onClick=castVote(${proposal.proposalId})> Claim ${fishAmount} FISH </button>
-      </div>
+      if (!hasVote) {
+        display += `
+          <div>
+            <button onClick=castVote("${proposal.proposalId}")> ${fishAmount} FISH </button>
+          </div>
       `;
+      }
     }
     // display proposals
     document.getElementById("display").innerHTML = display;

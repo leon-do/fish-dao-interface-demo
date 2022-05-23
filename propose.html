@@ -9,7 +9,7 @@
 <script>
   async function propose() {
     const claimAmount = document.getElementById("input").value;
-    // get description
+    // create description
     const description = claimAmount + "-" + Math.floor(Date.now() / 1000);
     const provider = await getProvider();
     // get call data from fish contract

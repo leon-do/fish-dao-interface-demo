@@ -7,29 +7,36 @@
 <script src="./scripts/fetchProposals.js"></script>
 <script>
   window.addEventListener("load", async (event) => {
-    // fetch from ./scripts/fetchProposals.js
-    const proposals = await fetchProposals();
-    // get state of each proposal
+    // get provider from ./scripts/getProvider.js
     const provider = await getProvider();
+    // connect to commons contract
     const CommonsContract = new ethers.Contract(config.commonsAddress, config.commonsAbi, provider);
+    // get quorum aka % required to approve a proposal
     const quorumNumerator = await CommonsContract["quorumNumerator"]();
-    // get total supply
+    // connect to fish contract
     const FishContract = new ethers.Contract(config.fishAddress, config.fishAbi, provider);
+    // get total supply
     const totalSupply = await FishContract["totalSupply"]();
+    // get when proposal expiration aka when season ends
     const proposalExp = await FishContract["getProposalExp"]();
     // get current block number
     const blockNumber = await provider.getBlockNumber();
+    // fetch from ./scripts/fetchProposals.js
+    const proposals = await fetchProposals();
+
     // display proposals
     let display = "";
     for (let proposal of proposals) {
       // parse 0xd03f291c0000000000000000000000000000000000000000000000000000000000000001
       const fishAmount = parseInt(proposal.calls[0].calldata.split("0xd03f291c")[1], 16);
-      const canClick = blockNumber > proposalExp && canExecute(proposal, totalSupply, quorumNumerator) ? "" : "disabled";
-      display += `
+      // display button if proposal is not expired can execute
+      if (blockNumber > proposalExp && canExecute(proposal, totalSupply, quorumNumerator)) {
+        display += `
         <div>
-          <button ${canClick} onClick="execute('${proposal.calls[0].calldata}', '${proposal.description}')"> Execute ${fishAmount} FISH </button>
+          <button onClick="execute('${proposal.calls[0].calldata}', '${proposal.description}')"> Execute ${fishAmount} FISH </button>
         </div>
       `;
+      }
     }
     document.getElementById("display").innerHTML = display;
   });

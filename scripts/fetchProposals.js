@@ -1,21 +1,21 @@
-async function fetchProposals() {
+async function fetchProposals(_blockNumber) {
+  const where = _blockNumber ? `where: {executed: false, startBlock_lte: "${_blockNumber}", endBlock_gte: "${_blockNumber}", canceled: false}` : `where: {executed: false, canceled: false}`;
   const query = `{
-    proposals (orderBy: "endBlock", orderDirection: "desc"){
-      startBlock
+    proposals(
+      orderBy: endBlock
+      ${where}
+    ) {
       proposalId
-      executed
-      endBlock
       description
       calls {
         calldata
       }
       receipts {
-        weight
         voter {
           id
         }
+        weight
       }
-      canceled
       supports {
         support
       }
