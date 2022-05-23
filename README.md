@@ -5,16 +5,21 @@ https://api.studio.thegraph.com/query/20193/dao-fish-rinkeby/v0.0.6/graphql
 https://api.studio.thegraph.com/query/20193/subgraph-block-rinkeby/v0.0.1
 
 ```graphql
-{
-  proposals {
-    id
-    startBlock
+query VoteProposals {
+  proposals(
+    orderBy: endBlock
+    where: {executed: false, startBlock_lte: "10578160", endBlock_gte: "10578160", canceled: false}
+  ) {
     proposalId
-    executed
-    endBlock
     description
     calls {
       calldata
+    }
+    receipts {
+      voter {
+        id
+      }
+      weight
     }
   }
 }
