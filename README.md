@@ -14,24 +14,23 @@ https://api.studio.thegraph.com/query/20193/dao-fish-rinkeby/v0.0.6/graphql
 
 ```graphql
 query VoteProposals {
-    proposals(
-      orderBy: endBlock
-      where: {executed: false, startBlock_lte: "10578160", endBlock_gte: "10578160", canceled: false}
-    ) {
-      proposalId
-      description
-      calls {
-        calldata
+  proposals(
+    orderBy: endBlock
+    where: {executed: false, startBlock_lte: "10578160", endBlock_gte: "10578160", canceled: false}
+  ) {
+    proposalId
+    description
+    calls {
+      calldata
+    }
+    receipts {
+      voter {
+        id
       }
-      receipts {
-        voter {
-          id
-        }
-        weight
-      }
-      supports {
-        support
-      }
+      weight
+    }
+    supports {
+      support
     }
   }
 }
